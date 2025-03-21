@@ -164,55 +164,11 @@ class ApiService {
 
   Future<Business> getBusinessById(int id) async {
     try {
-      // Thử phương pháp khác để truyền ID - dùng path thay vì query parameter
-      print('Đang tải getBusinessById với id=$id từ: $baseUrl/businesses/$id');
+      print('Đang tải getBusinessById với id=$id từ: $baseUrl/businesses/detail?id=$id');
       final response = await http.get(
-        Uri.parse('$baseUrl/businesses/$id'),
+        Uri.parse('$baseUrl/businesses/detail?id=$id'),
       ).timeout(const Duration(seconds: 10));
 
-      // Nếu không được, thử sử dụng id thay vì ID trong query parameter
-      if (response.statusCode != 200 || jsonDecode(response.body)['status'] == 'error') {
-        print('Thử phương pháp truyền tham số khác: id thay vì ID');
-        final alternativeResponse = await http.get(
-          Uri.parse('$baseUrl/businesses/detail?id=$id'),
-        ).timeout(const Duration(seconds: 10));
-        
-        print('getBusinessById alternative status code: ${alternativeResponse.statusCode}');
-        print('getBusinessById alternative response body: ${alternativeResponse.body}');
-        
-        final data = jsonDecode(alternativeResponse.body);
-        
-        if (data['status'] != 'success') {
-          // Thử phương pháp cuối cùng - truyền ID trong body
-          final postResponse = await http.post(
-            Uri.parse('$baseUrl/businesses/detail'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'id': id}),
-          ).timeout(const Duration(seconds: 10));
-          
-          print('getBusinessById POST status code: ${postResponse.statusCode}');
-          print('getBusinessById POST response body: ${postResponse.body}');
-          
-          final postData = jsonDecode(postResponse.body);
-          
-          if (postData['status'] != 'success') {
-            throw Exception('API trả về lỗi: ${postData['message'] ?? "Không thể tải thông tin"}');
-          }
-          
-          if (postData['data'] == null) {
-            throw Exception('Không tìm thấy thông tin doanh nghiệp với ID: $id');
-          }
-          
-          return Business.fromJson(postData['data']);
-        }
-        
-        if (data['data'] == null) {
-          throw Exception('Không tìm thấy thông tin doanh nghiệp với ID: $id');
-        }
-        
-        return Business.fromJson(data['data']);
-      }
-      
       print('getBusinessById status code: ${response.statusCode}');
       print('getBusinessById response body: ${response.body}');
       

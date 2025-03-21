@@ -95,6 +95,10 @@ class _BusinessesTabState extends State<BusinessesTab> {
 
 class BusinessCard extends StatelessWidget {
   final Business business;
+  
+  // Màu chủ đạo của card
+  static const Color primaryTextColor = Color(0xFF1A1A1A);
+  static const Color primaryBlueColor = Color(0xFFE8F4FA);
 
   const BusinessCard({super.key, required this.business});
 
@@ -103,11 +107,12 @@ class BusinessCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Colors.grey.shade200),
       ),
-      elevation: 2,
+      elevation: 0.5,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -115,101 +120,270 @@ class BusinessCard extends StatelessWidget {
             ),
           );
         },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
-              child: business.imageUrls.isNotEmpty
-                  ? Image.network(
-                      business.imageUrls[0],
-                      height: 150,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 150,
-                          width: double.infinity,
-                          color: Colors.grey[300],
-                          child: const Icon(
-                            Icons.business,
-                            size: 50,
-                            color: Colors.grey,
-                          ),
-                        );
-                      },
-                    )
-                  : Container(
-                      height: 150,
-                      width: double.infinity,
-                      color: Colors.grey[300],
-                      child: const Icon(
-                        Icons.business,
-                        size: 50,
-                        color: Colors.grey,
-                      ),
-                    ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: Colors.white,
+            image: const DecorationImage(
+              image: AssetImage('assets/background.jpg'),
+              fit: BoxFit.cover,
+              opacity: 0.05,
             ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header với tên doanh nghiệp
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(8),
+                    topRight: Radius.circular(8),
+                  ),
+                  color: Colors.white,
+                ),
+                child: Center(
+                  child: Text(
                     business.name,
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      color: primaryTextColor,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              
+              // Content với 2 cột: Logo và Thông tin
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Cột trái (Logo)
+                  Container(
+                    width: 130,
+                    padding: const EdgeInsets.fromLTRB(16, 16, 0, 16),
+                    child: Column(
+                      children: [
+                        // Logo doanh nghiệp
+                        Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: business.imageUrls.isNotEmpty
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Image.network(
+                                    business.imageUrls[0],
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Center(
+                                        child: Icon(Icons.business, size: 40, color: Colors.teal[200]),
+                                      );
+                                    },
+                                  ),
+                                )
+                              : Center(
+                                  child: Icon(Icons.business, size: 40, color: Colors.teal[200]),
+                                ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Ngôn ngữ
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Logo Trung Quốc
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '文',
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.bold, 
+                                    fontSize: 16
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Logo Nhật Bản
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '日',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Chi tiết
+                        OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => BusinessDetailScreen(businessId: business.id),
+                              ),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: primaryTextColor,
+                            side: BorderSide(color: Colors.grey.shade400),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          child: const Text(
+                            'Chi Tiết',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined, size: 16, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          business.address,
-                          style: TextStyle(color: Colors.grey[600]),
+                  
+                  // Cột phải (Thông tin doanh nghiệp)
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: const BoxDecoration(
+                        color: Color(0x99E8F4FA),
+                        borderRadius: BorderRadius.only(
+                          bottomRight: Radius.circular(8),
+                        ),
+                        image: DecorationImage(
+                          image: AssetImage('assets/background.jpg'),
+                          fit: BoxFit.cover,
+                          opacity: 0.5,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.category_outlined, size: 16, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text(
-                        business.industry,
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Nhu cầu: ${business.needs}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildInfoRow('Năm Thành Lập:', business.foundedYear),
+                          const SizedBox(height: 12),
+                          _buildInfoRow('Nhân Viên:', business.employees),
+                          const SizedBox(height: 12),
+                          _buildInfoRow('Vốn Doanh Nghiệp:', _formatCapital(business.capital)),
+                          const SizedBox(height: 12),
+                          _buildInfoRow('Địa Chỉ:', business.address, maxLines: 2),
+                          const SizedBox(height: 12),
+                          _buildInfoRow('Ngành Nghề:', business.industry),
+                          const SizedBox(height: 12),
+                          _buildInfoRow('Nhu Cầu:', business.needs, maxLines: 2),
+                          const SizedBox(height: 16),
+                          // JCI, YBA badge ở dưới cùng
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Container(
+                                height: 26,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber[100],
+                                  borderRadius: BorderRadius.circular(13),
+                                  border: Border.all(color: Colors.amber.shade300),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.people, size: 14, color: Colors.amber[700]),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'JCI, YBA',
+                                      style: TextStyle(
+                                        color: Colors.amber[800],
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+  
+  Widget _buildInfoRow(String label, String value, {int maxLines = 1}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 130,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: primaryTextColor,
+              fontSize: 14,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: primaryTextColor,
+              fontSize: 14,
+            ),
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  String _formatCapital(String capital) {
+    if (capital.isEmpty) return '';
+    // Nếu capital chứa tiếng Nhật như "万円", giữ nguyên
+    if (capital.contains('万') || capital.contains('円')) {
+      return capital;
+    }
+    try {
+      int capitalValue = int.parse(capital);
+      if (capitalValue >= 1000000000) {
+        return '${(capitalValue / 1000000000).toStringAsFixed(1)} tỷ VND';
+      } else if (capitalValue >= 1000000) {
+        return '${(capitalValue / 1000000).toStringAsFixed(1)} triệu VND';
+      }
+      return '$capitalValue VND';
+    } catch (e) {
+      return capital;
+    }
   }
 } 

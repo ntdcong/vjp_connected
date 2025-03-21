@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../profile/edit_profile_screen.dart';
+import '../settings/app_settings_screen.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -82,9 +84,10 @@ class ProfileTab extends StatelessWidget {
                   title: 'Thông tin cá nhân',
                   subtitle: 'Chỉnh sửa thông tin cá nhân của bạn',
                   onTap: () {
-                    // TODO: Màn hình chỉnh sửa thông tin cá nhân
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Chức năng đang phát triển')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => EditProfileScreen(),
+                      ),
                     );
                   },
                 ),
@@ -108,9 +111,10 @@ class ProfileTab extends StatelessWidget {
                   title: 'Cài đặt',
                   subtitle: 'Thông báo, ngôn ngữ, giao diện',
                   onTap: () {
-                    // TODO: Màn hình cài đặt
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Chức năng đang phát triển')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => AppSettingsScreen(),
+                      ),
                     );
                   },
                 ),
