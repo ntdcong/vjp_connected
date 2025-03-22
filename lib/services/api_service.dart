@@ -8,14 +8,16 @@ import '../models/business.dart';
 import '../models/message.dart';
 
 class ApiService {
-  // API Base URL - thay thế localhost bằng 10.0.2.2 cho Android emulator
   static String get baseUrl {
-    // Sử dụng 10.0.2.2 cho Android Emulator để trỏ đến localhost của máy host
-    // Sử dụng localhost cho iOS Simulator hoặc thiết bị thực
     if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:8000/api/v1';
+      return 'http://10.0.2.2:8000/api/v1';  // Android emulator special IP for host machine
     }
-    return 'http://localhost:8000/api/v1';
+    return 'http://localhost:8000/api/v1';  // Keep localhost for web and other platforms
+  }
+  
+  static String sanitizeUrl(String? url) {
+    if (url == null) return '';
+    return url.contains('<br />') ? url.replaceAll('<br />', '').trim() : url;
   }
   
   // Lưu token cho các request yêu cầu xác thực
@@ -283,15 +285,37 @@ class ApiService {
         .toList();
   }
 
-  Future<Map<String, dynamic>> sendMessage(int receiverId, String content) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/messages/send'),
-      headers: await getAuthHeaders(),
-      body: jsonEncode({
-        'receiver_id': receiverId,
-        'content': content,
-      }),
-    );
+  Future<Map<String, dynamic>> sendMessage(int receiverId, {String? content, File? image}) async {
+    final uri = Uri.parse('$baseUrl/messages/send');
+    final request = http.MultipartRequest('POST', uri);
+    
+    // Thêm headers
+    final headers = await getAuthHeaders();
+    request.headers.addAll(headers);
+    
+    // Thêm receiver_id
+    request.fields['receiver_id'] = receiverId.toString();
+    
+    // Thêm content nếu có
+    if (content != null && content.isNotEmpty) {
+      request.fields['content'] = content;
+    }
+    
+    // Thêm image nếu có
+    if (image != null) {
+      final stream = http.ByteStream(image.openRead());
+      final length = await image.length();
+      final multipartFile = http.MultipartFile(
+        'image',
+        stream,
+        length,
+        filename: image.path.split('/').last,
+      );
+      request.files.add(multipartFile);
+    }
+    
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
 
     return jsonDecode(response.body);
   }
@@ -310,7 +334,6 @@ class ApiService {
   Future<bool> checkApiConnection() async {
     try {
       print('Kiểm tra kết nối API với URL: $baseUrl');
-      // Thử ping máy chủ với endpoint bất kỳ thay vì health-check
       final response = await http.get(
         Uri.parse('$baseUrl/auth/ping'),
       ).timeout(const Duration(seconds: 5));
@@ -319,20 +342,21 @@ class ApiService {
       
       // Nếu không có kết quả hoặc lỗi, thử ping trực tiếp máy chủ cơ sở
       if (response.statusCode >= 400) {
+        final baseUrl = !kIsWeb && Platform.isAndroid ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
         final baseResponse = await http.get(
-          Uri.parse('http://localhost:8000/'),
+          Uri.parse(baseUrl),
         ).timeout(const Duration(seconds: 5));
         print('Base server status code: ${baseResponse.statusCode}');
       }
       
-      // Giả định kết nối OK vì nhiều máy chủ có thể không có health-check
       return true;
     } catch (e) {
       print('API connection check failed: $e');
       // Thử ping một lần nữa trực tiếp tới máy chủ
       try {
+        final baseUrl = !kIsWeb && Platform.isAndroid ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
         final baseResponse = await http.get(
-          Uri.parse('http://localhost:8000/'),
+          Uri.parse(baseUrl),
         ).timeout(const Duration(seconds: 5));
         print('Base server retry status code: ${baseResponse.statusCode}');
         return true;
@@ -342,4 +366,4 @@ class ApiService {
       }
     }
   }
-} 
+}

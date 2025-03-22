@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import '../models/message.dart';
 import '../services/api_service.dart';
 
@@ -47,8 +48,11 @@ class MessageProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> sendMessage(int receiverId, String content) async {
-    if (content.trim().isEmpty) {
+  Future<bool> sendMessage(int receiverId, {String? content, File? image}) async {
+    if (content == null && image == null) {
+      return false;
+    }
+    if (content != null && content.trim().isEmpty && image == null) {
       return false;
     }
 
@@ -57,7 +61,7 @@ class MessageProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.sendMessage(receiverId, content);
+      final response = await _apiService.sendMessage(receiverId, content: content, image: image);
       if (response['status'] == 'success') {
         // Làm mới danh sách tin nhắn nếu đang xem cuộc trò chuyện này
         if (_selectedUserId == receiverId) {
@@ -115,4 +119,4 @@ class MessageProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
   }
-} 
+}
