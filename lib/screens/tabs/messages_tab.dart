@@ -13,16 +13,50 @@ class MessagesTab extends StatefulWidget {
   State<MessagesTab> createState() => _MessagesTabState();
 }
 
-class _MessagesTabState extends State<MessagesTab> {
+class _MessagesTabState extends State<MessagesTab> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.isAuthenticated) {
         Provider.of<MessageProvider>(context, listen: false).fetchConversations();
+        // Bắt đầu polling khi tab được khởi tạo
+        Provider.of<MessageProvider>(context, listen: false).startPolling();
       }
     });
+  }
+  
+  @override
+  void dispose() {
+    // Dừng polling khi tab được đóng
+    Provider.of<MessageProvider>(context, listen: false).stopPolling();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Quản lý polling dựa trên trạng thái ứng dụng
+    final messageProvider = Provider.of<MessageProvider>(context, listen: false);
+    
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // Ứng dụng trở lại foreground, bắt đầu polling
+        messageProvider.startPolling();
+        // Cập nhật dữ liệu ngay lập tức
+        messageProvider.fetchConversations();
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.inactive:
+        // Ứng dụng vào background hoặc bị đóng, dừng polling để tiết kiệm tài nguyên
+        messageProvider.stopPolling();
+        break;
+      default:
+        break;
+    }
   }
 
   @override
@@ -110,23 +144,62 @@ class _MessagesTabState extends State<MessagesTab> {
               );
             }
 
-            return RefreshIndicator(
-              onRefresh: () async {
-                await messageProvider.fetchConversations();
-              },
-              color: const Color(0xFF2AABEE),
-              child: ListView.separated(
-                separatorBuilder: (context, index) => const Divider(
-                  height: 1,
-                  indent: 72,
-                  endIndent: 16,
+            // Thêm chỉ báo khi polling đang hoạt động
+            return Stack(
+              children: [
+                RefreshIndicator(
+                  onRefresh: () async {
+                    await messageProvider.fetchConversations();
+                  },
+                  color: const Color(0xFF2AABEE),
+                  child: ListView.separated(
+                    separatorBuilder: (context, index) => const Divider(
+                      height: 1,
+                      indent: 72,
+                      endIndent: 16,
+                    ),
+                    itemCount: messageProvider.conversations.length,
+                    itemBuilder: (context, index) {
+                      final conversation = messageProvider.conversations[index];
+                      return _buildConversationItem(context, conversation);
+                    },
+                  ),
                 ),
-                itemCount: messageProvider.conversations.length,
-                itemBuilder: (context, index) {
-                  final conversation = messageProvider.conversations[index];
-                  return _buildConversationItem(context, conversation);
-                },
-              ),
+                // Hiển thị nhỏ ở góc màn hình khi polling đang hoạt động
+                if (messageProvider.isPollingActive)
+                  Positioned(
+                    bottom: 70,
+                    right: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.green[300]!),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Tự động cập nhật',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             );
           },
         ),
