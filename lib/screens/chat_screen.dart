@@ -75,81 +75,134 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.userName),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Consumer<MessageProvider>(
-              builder: (context, messageProvider, child) {
-                if (messageProvider.isLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
-                }
-
-                if (messageProvider.error != null) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          messageProvider.error!,
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            messageProvider.fetchMessages(widget.userId);
-                          },
-                          child: const Text('Thử lại'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                if (messageProvider.messages.isEmpty) {
-                  return const Center(
-                    child: Text('Chưa có tin nhắn nào'),
-                  );
-                }
-
-                // Cuộn xuống tin nhắn cuối cùng khi có tin nhắn mới
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (_scrollController.hasClients) {
-                    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-                  }
-                });
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messageProvider.messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messageProvider.messages[index];
-                    return _buildMessageItem(message);
-                  },
-                );
-              },
+        elevation: 1,
+        backgroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF2AABEE)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: const Color(0xFF2AABEE).withOpacity(0.2),
+              child: const Icon(Icons.person, size: 24, color: Color(0xFF2AABEE)),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.image),
-                  onPressed: _pickImage,
+                Text(
+                  widget.userName,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                Expanded(
-                  child: _buildMessageInput(),
+                const Text(
+                  'Trực tuyến',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.call, color: Color(0xFF2AABEE)),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert, color: Color(0xFF2AABEE)),
+            onPressed: () {},
           ),
         ],
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F5F5),
+          image: DecorationImage(
+            image: const AssetImage('assets/images/chat_bg.png'),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              Colors.white.withOpacity(0.05),
+              BlendMode.dstATop,
+            ),
+          ),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: Consumer<MessageProvider>(
+                builder: (context, messageProvider, child) {
+                  if (messageProvider.isLoading) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2AABEE)),
+                      ),
+                    );
+                  }
+
+                  if (messageProvider.error != null) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            messageProvider.error!,
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              messageProvider.fetchMessages(widget.userId);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2AABEE),
+                            ),
+                            child: const Text('Thử lại'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (messageProvider.messages.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Chưa có tin nhắn nào',
+                        style: TextStyle(color: Colors.black54),
+                      ),
+                    );
+                  }
+
+                  // Cuộn xuống tin nhắn cuối cùng khi có tin nhắn mới
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (_scrollController.hasClients) {
+                      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+                    }
+                  });
+
+                  return ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    itemCount: messageProvider.messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messageProvider.messages[index];
+                      return _buildMessageItem(message);
+                    },
+                  );
+                },
+              ),
+            ),
+            _buildMessageInput(),
+          ],
+        ),
       ),
     );
   }
@@ -158,53 +211,48 @@ class _ChatScreenState extends State<ChatScreen> {
     final isMine = message.isMine;
     final time = DateFormat('HH:mm').format(DateTime.parse(message.createdAt));
     final isRead = message.isRead;
-    final isOnline = message.isOnline;
-    final readAt = message.readAt != null ? DateFormat('HH:mm').format(DateTime.parse(message.readAt!)) : null;
-    final hasImage = message.image != null || message.imageUrl != null;
+    final hasImage = (message.image != null && message.image!.isNotEmpty) || 
+                     (message.imageUrl != null && message.imageUrl!.isNotEmpty);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
       child: Row(
         mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMine) ...[
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.grey[300],
-                  child: const Icon(Icons.person, size: 24, color: Colors.white),
-                ),
-                if (isOnline)
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-              ],
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: Colors.blue[100],
+              child: const Icon(Icons.person, size: 18, color: Colors.blue),
             ),
             const SizedBox(width: 8),
           ],
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              margin: EdgeInsets.only(
+                top: 2,
+                bottom: 2,
+                left: isMine ? 64 : 0,
+                right: isMine ? 0 : 64,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isMine ? Colors.blue : Colors.grey[200],
+                color: isMine ? const Color(0xFFE3F2FD) : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
-                  bottomLeft: isMine ? const Radius.circular(16) : Radius.zero,
-                  bottomRight: isMine ? Radius.zero : const Radius.circular(16),
+                  bottomLeft: isMine ? const Radius.circular(16) : const Radius.circular(4),
+                  bottomRight: isMine ? const Radius.circular(4) : const Radius.circular(16),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    spreadRadius: 0,
+                    blurRadius: 1,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,7 +267,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               appBar: AppBar(
                                 backgroundColor: Colors.black,
                                 leading: IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.white),
+                                  icon: const Icon(Icons.arrow_back, color: Colors.white),
                                   onPressed: () => Navigator.pop(context),
                                 ),
                               ),
@@ -238,6 +286,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                               ? loadingProgress.cumulativeBytesLoaded /
                                                   loadingProgress.expectedTotalBytes!
                                               : null,
+                                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                                         ),
                                       );
                                     },
@@ -251,7 +300,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                           const SizedBox(height: 16),
                                           Text(
                                             'Không thể tải ảnh',
-                                            style: TextStyle(color: Colors.grey[600]),
+                                            style: const TextStyle(color: Colors.white),
                                           ),
                                         ],
                                       );
@@ -265,10 +314,11 @@ class _ChatScreenState extends State<ChatScreen> {
                         );
                       },
                       child: Container(
-                        constraints: const BoxConstraints(
-                          maxWidth: 200,
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.65,
                           maxHeight: 200,
                         ),
+                        margin: const EdgeInsets.only(bottom: 4),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.network(
@@ -289,6 +339,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                         ? loadingProgress.cumulativeBytesLoaded /
                                             loadingProgress.expectedTotalBytes!
                                         : null,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      isMine ? const Color(0xFF2AABEE) : Colors.grey,
+                                    ),
                                   ),
                                 ),
                               );
@@ -324,38 +377,29 @@ class _ChatScreenState extends State<ChatScreen> {
                     Text(
                       message.content,
                       style: TextStyle(
-                        color: isMine ? Colors.white : Colors.black,
-                        fontSize: 16,
+                        color: Colors.black87,
+                        fontSize: 15,
                       ),
                     ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Row(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Text(
                         time,
                         style: TextStyle(
-                          color: isMine ? Colors.white70 : Colors.black54,
-                          fontSize: 12,
+                          color: Colors.black54,
+                          fontSize: 11,
                         ),
                       ),
                       if (isMine) ...[  
                         const SizedBox(width: 4),
                         Icon(
                           isRead ? Icons.done_all : Icons.done,
-                          size: 16,
-                          color: isRead ? Colors.blue : Colors.white70,
+                          size: 14,
+                          color: isRead ? const Color(0xFF2AABEE) : Colors.black38,
                         ),
-                        if (readAt != null) ...[  
-                          const SizedBox(width: 4),
-                          Text(
-                            readAt,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
                       ],
                     ],
                   ),
@@ -363,32 +407,6 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ),
-          if (isMine) ...[
-            const SizedBox(width: 8),
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.grey[300],
-                  child: const Icon(Icons.person, size: 24, color: Colors.white),
-                ),
-                if (isOnline)
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
         ],
       ),
     );
@@ -399,67 +417,70 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Colors.grey[200]!),
-        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withOpacity(0.06),
             offset: const Offset(0, -1),
-            blurRadius: 4,
+            blurRadius: 3,
           ),
         ],
       ),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.attach_file),
+            icon: const Icon(Icons.attach_file, size: 22),
             color: const Color(0xFF2AABEE),
-            onPressed: () {
-              // TODO: Implement file attachment
-            },
+            onPressed: () {},
           ),
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFFF2F2F2),
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: Colors.grey[300]!),
               ),
-              child: TextField(
-                controller: _messageController,
-                decoration: InputDecoration(
-                  hintText: 'Nhập tin nhắn...',
-                  hintStyle: TextStyle(color: Colors.grey[500]),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: const InputDecoration(
+                        hintText: 'Tin nhắn',
+                        hintStyle: TextStyle(color: Colors.black54),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                      ),
+                      maxLines: null,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
                   ),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.emoji_emotions_outlined),
+                  IconButton(
+                    icon: const Icon(Icons.emoji_emotions_outlined, size: 22),
                     color: const Color(0xFF2AABEE),
-                    onPressed: () {
-                      // TODO: Implement emoji picker
-                    },
+                    onPressed: () {},
                   ),
-                ),
-                maxLines: null,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _sendMessage(),
+                ],
               ),
             ),
           ),
           const SizedBox(width: 8),
-          Container(
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFF2AABEE),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.send, size: 20),
-              color: Colors.white,
-              onPressed: _sendMessage,
+          GestureDetector(
+            onTap: _messageController.text.trim().isEmpty ? _pickImage : _sendMessage,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFF2AABEE),
+              ),
+              child: Icon(
+                _messageController.text.trim().isEmpty ? Icons.camera_alt : Icons.send,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
           ),
         ],

@@ -12,6 +12,11 @@ class BusinessesTab extends StatefulWidget {
 }
 
 class _BusinessesTabState extends State<BusinessesTab> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  // 0: card phong cách cũ, 1: card dạng grid, 2: card dạng list
+  int _viewMode = 0;
+
   @override
   void initState() {
     super.initState();
@@ -22,18 +27,97 @@ class _BusinessesTabState extends State<BusinessesTab> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Doanh nghiệp'),
+        title: const Text(
+          'Doanh nghiệp',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // TODO: Thêm chức năng tìm kiếm
+          PopupMenuButton<int>(
+            icon: const Icon(Icons.view_list),
+            onSelected: (int result) {
+              setState(() {
+                _viewMode = result;
+              });
             },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<int>(
+                value: 0,
+                child: Row(
+                  children: [
+                    Icon(Icons.view_agenda, size: 20),
+                    SizedBox(width: 8),
+                    Text('Kiểu thẻ gốc'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<int>(
+                value: 1,
+                child: Row(
+                  children: [
+                    Icon(Icons.grid_view, size: 20),
+                    SizedBox(width: 8),
+                    Text('Kiểu lưới'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<int>(
+                value: 2,
+                child: Row(
+                  children: [
+                    Icon(Icons.view_list, size: 20),
+                    SizedBox(width: 8),
+                    Text('Kiểu danh sách'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Tìm kiếm doanh nghiệp...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          setState(() {
+                            _searchController.clear();
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+            ),
+          ),
+        ),
       ),
       body: Consumer<BusinessProvider>(
         builder: (context, businessProvider, child) {
@@ -66,6 +150,13 @@ class _BusinessesTabState extends State<BusinessesTab> {
                     onPressed: () {
                       businessProvider.fetchAllBusinesses();
                     },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
                     child: const Text('Thử lại'),
                   ),
                 ],
@@ -74,33 +165,110 @@ class _BusinessesTabState extends State<BusinessesTab> {
           }
 
           if (businessProvider.businesses.isEmpty) {
-            return const Center(
-              child: Text('Không có doanh nghiệp nào'),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.business, size: 80, color: Colors.grey.shade300),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Không tìm thấy doanh nghiệp nào',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: businessProvider.businesses.length,
-            itemBuilder: (context, index) {
-              final business = businessProvider.businesses[index];
-              return BusinessCard(business: business);
-            },
-          );
+          // Lọc doanh nghiệp theo từ khóa tìm kiếm
+          final filteredBusinesses = businessProvider.businesses.where((business) {
+            return business.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                   business.industry.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                   business.address.toLowerCase().contains(_searchQuery.toLowerCase());
+          }).toList();
+
+          if (filteredBusinesses.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.search_off, size: 80, color: Colors.grey.shade300),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Không tìm thấy kết quả cho "$_searchQuery"',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          switch (_viewMode) {
+            case 0:
+              return _buildOriginalCardView(filteredBusinesses);
+            case 1:
+              return _buildGridView(filteredBusinesses);
+            case 2:
+              return _buildListView(filteredBusinesses);
+            default:
+              return _buildOriginalCardView(filteredBusinesses);
+          }
         },
       ),
     );
   }
+
+  Widget _buildOriginalCardView(List<Business> businesses) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: businesses.length,
+      itemBuilder: (context, index) {
+        return BusinessOriginalCard(business: businesses[index]);
+      },
+    );
+  }
+
+  Widget _buildGridView(List<Business> businesses) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.8,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: businesses.length,
+      itemBuilder: (context, index) {
+        return BusinessGridCard(business: businesses[index]);
+      },
+    );
+  }
+
+  Widget _buildListView(List<Business> businesses) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: businesses.length,
+      itemBuilder: (context, index) {
+        return BusinessListCard(business: businesses[index]);
+      },
+    );
+  }
 }
 
-class BusinessCard extends StatelessWidget {
+class BusinessOriginalCard extends StatelessWidget {
   final Business business;
   
   // Màu chủ đạo của card
   static const Color primaryTextColor = Color(0xFF1A1A1A);
   static const Color primaryBlueColor = Color(0xFFE8F4FA);
 
-  const BusinessCard({super.key, required this.business});
+  const BusinessOriginalCard({super.key, required this.business});
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +278,7 @@ class BusinessCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         side: BorderSide(color: Colors.grey.shade200),
       ),
-      elevation: 0.5,
+      elevation: 1.0,
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: () {
@@ -125,7 +293,7 @@ class BusinessCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             color: Colors.white,
             image: const DecorationImage(
-              image: AssetImage('assets/background.jpg'),
+              image: AssetImage('assets/images/pattern_bg.png'),
               fit: BoxFit.cover,
               opacity: 0.05,
             ),
@@ -143,6 +311,14 @@ class BusinessCard extends StatelessWidget {
                     topRight: Radius.circular(8),
                   ),
                   color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 0,
+                      blurRadius: 1,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
                 child: Center(
                   child: Text(
@@ -175,6 +351,14 @@ class BusinessCard extends StatelessWidget {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(color: Colors.grey.shade200),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.2),
+                                spreadRadius: 0,
+                                blurRadius: 3,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                           child: business.imageUrls.isNotEmpty
                               ? ClipRRect(
@@ -206,7 +390,7 @@ class BusinessCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(color: Colors.grey.shade300),
                               ),
-                              child: Center(
+                              child: const Center(
                                 child: Text(
                                   '文',
                                   style: TextStyle(
@@ -226,7 +410,7 @@ class BusinessCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(color: Colors.grey.shade300),
                               ),
-                              child: Center(
+                              child: const Center(
                                 child: Text(
                                   '日',
                                   style: TextStyle(
@@ -241,25 +425,29 @@ class BusinessCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         // Chi tiết
-                        OutlinedButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => BusinessDetailScreen(businessId: business.id),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => BusinessDetailScreen(businessId: business.id),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade50,
+                              foregroundColor: Colors.blue.shade700,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                            );
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: primaryTextColor,
-                            side: BorderSide(color: Colors.grey.shade400),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+                              elevation: 0,
                             ),
-                          ),
-                          child: const Text(
-                            'Chi Tiết',
-                            style: TextStyle(fontSize: 14),
+                            child: const Text(
+                              'Chi Tiết',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                            ),
                           ),
                         ),
                       ],
@@ -270,15 +458,15 @@ class BusinessCard extends StatelessWidget {
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: const BoxDecoration(
-                        color: Color(0x99E8F4FA),
-                        borderRadius: BorderRadius.only(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F4FA).withOpacity(0.6),
+                        borderRadius: const BorderRadius.only(
                           bottomRight: Radius.circular(8),
                         ),
-                        image: DecorationImage(
-                          image: AssetImage('assets/background.jpg'),
+                        image: const DecorationImage(
+                          image: AssetImage('assets/images/pattern_bg.png'),
                           fit: BoxFit.cover,
-                          opacity: 0.5,
+                          opacity: 0.1,
                         ),
                       ),
                       child: Column(
@@ -310,10 +498,10 @@ class BusinessCard extends StatelessWidget {
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.people, size: 14, color: Colors.amber[700]),
+                                    Icon(Icons.star, size: 14, color: Colors.amber[700]),
                                     const SizedBox(width: 4),
                                     Text(
-                                      'JCI, YBA',
+                                      'BNI',
                                       style: TextStyle(
                                         color: Colors.amber[800],
                                         fontWeight: FontWeight.bold,
@@ -367,23 +555,259 @@ class BusinessCard extends StatelessWidget {
       ],
     );
   }
-  
-  String _formatCapital(String capital) {
-    if (capital.isEmpty) return '';
-    // Nếu capital chứa tiếng Nhật như "万円", giữ nguyên
-    if (capital.contains('万') || capital.contains('円')) {
-      return capital;
+}
+
+class BusinessGridCard extends StatelessWidget {
+  final Business business;
+
+  const BusinessGridCard({super.key, required this.business});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => BusinessDetailScreen(businessId: business.id),
+            ),
+          );
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image Section
+            SizedBox(
+              height: 120,
+              width: double.infinity,
+              child: business.imageUrls.isNotEmpty
+                  ? Image.network(
+                      business.imageUrls[0],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey.shade200,
+                          child: Center(
+                            child: Icon(Icons.business, size: 40, color: Colors.teal.shade200),
+                          ),
+                        );
+                      },
+                    )
+                  : Container(
+                      color: Colors.grey.shade200,
+                      child: Center(
+                        child: Icon(Icons.business, size: 40, color: Colors.teal.shade200),
+                      ),
+                    ),
+            ),
+
+            // Info Section
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      business.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      business.industry,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, size: 12, color: Colors.teal.shade300),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            business.address.split(',').last.trim(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class BusinessListCard extends StatelessWidget {
+  final Business business;
+
+  const BusinessListCard({super.key, required this.business});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      elevation: 2,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => BusinessDetailScreen(businessId: business.id),
+            ),
+          );
+        },
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            SizedBox(
+              width: 100,
+              height: 120,
+              child: business.imageUrls.isNotEmpty
+                  ? Image.network(
+                      business.imageUrls[0],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey.shade200,
+                          child: Center(
+                            child: Icon(Icons.business, size: 40, color: Colors.teal.shade200),
+                          ),
+                        );
+                      },
+                    )
+                  : Container(
+                      color: Colors.grey.shade200,
+                      child: Center(
+                        child: Icon(Icons.business, size: 40, color: Colors.teal.shade200),
+                      ),
+                    ),
+            ),
+
+            // Info
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      business.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            business.industry,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.people, size: 16, color: Colors.teal.shade300),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            business.employees,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.location_on, size: 16, color: Colors.teal.shade300),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            business.address,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade700,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _formatCapital(String capital) {
+  if (capital.isEmpty) return '';
+  // Nếu capital chứa tiếng Nhật như "万円", giữ nguyên
+  if (capital.contains('万') || capital.contains('円')) {
+    return capital;
+  }
+  try {
+    int capitalValue = int.parse(capital);
+    if (capitalValue >= 1000000000) {
+      return '${(capitalValue / 1000000000).toStringAsFixed(1)} tỷ VND';
+    } else if (capitalValue >= 1000000) {
+      return '${(capitalValue / 1000000).toStringAsFixed(1)} triệu VND';
     }
-    try {
-      int capitalValue = int.parse(capital);
-      if (capitalValue >= 1000000000) {
-        return '${(capitalValue / 1000000000).toStringAsFixed(1)} tỷ VND';
-      } else if (capitalValue >= 1000000) {
-        return '${(capitalValue / 1000000).toStringAsFixed(1)} triệu VND';
-      }
-      return '$capitalValue VND';
-    } catch (e) {
-      return capital;
-    }
+    return '$capitalValue VND';
+  } catch (e) {
+    return capital;
   }
 } 

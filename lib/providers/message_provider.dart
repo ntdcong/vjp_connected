@@ -9,27 +9,33 @@ class MessageProvider extends ChangeNotifier {
   List<Message> _messages = [];
   int? _selectedUserId;
   bool _isLoading = false;
+  bool _isLoadingConversations = false;
   String? _error;
+  String? _conversationError;
 
   List<Conversation> get conversations => _conversations;
   List<Message> get messages => _messages;
   int? get selectedUserId => _selectedUserId;
   bool get isLoading => _isLoading;
+  bool get isLoadingConversations => _isLoadingConversations;
   String? get error => _error;
+  String? get conversationError => _conversationError;
 
   Future<void> fetchConversations() async {
-    _isLoading = true;
-    _error = null;
+    _isLoadingConversations = true;
+    _conversationError = null;
     notifyListeners();
 
     try {
       _conversations = await _apiService.getConversations();
+      _conversationError = null;
     } catch (e) {
-      _error = 'Không thể tải cuộc trò chuyện: ${e.toString()}';
+      _conversationError = 'Không thể tải danh sách cuộc trò chuyện: ${e.toString()}';
+      print('Error fetching conversations: $e');
+    } finally {
+      _isLoadingConversations = false;
+      notifyListeners();
     }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   Future<void> fetchMessages(int userId) async {
