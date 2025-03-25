@@ -204,11 +204,6 @@ class _MessagesTabState extends State<MessagesTab> with WidgetsBindingObserver {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: const Color(0xFF2AABEE),
-        child: const Icon(Icons.edit),
-      ),
     );
   }
 
