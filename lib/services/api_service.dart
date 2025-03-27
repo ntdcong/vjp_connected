@@ -25,7 +25,7 @@ static String get baseUrl {
         
         return isEmulator 
             ? 'http://10.0.2.2:8000/api/v1'      // Android emulator
-            : 'http://192.168.0.161:8000/api/v1'; // Real device
+            : 'http://192.168.1.4:8000/api/v1'; // Real device
       } else if (Platform.isIOS) {
         return 'http://localhost:8000/api/v1';    // iOS simulator
       }

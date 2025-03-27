@@ -7,12 +7,16 @@ class ImageGalleryView extends StatefulWidget {
   final String initialImage;
   final List<Message> messages;
   final Message currentMessage;
+  final int initialIndex;
+  final List<String> images;
 
   const ImageGalleryView({
     Key? key,
     required this.initialImage,
     required this.messages,
     required this.currentMessage,
+    required this.initialIndex,
+    required this.images,
   }) : super(key: key);
 
   @override
@@ -26,7 +30,7 @@ class _ImageGalleryViewState extends State<ImageGalleryView> {
   @override
   void initState() {
     super.initState();
-    currentIndex = widget.messages.indexOf(widget.currentMessage);
+    currentIndex = widget.initialIndex;  // Ưu tiên initialIndex
     _pageController = PageController(initialPage: currentIndex);
   }
 
@@ -41,7 +45,7 @@ class _ImageGalleryViewState extends State<ImageGalleryView> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          '${currentIndex + 1}/${widget.messages.length}',
+          '${currentIndex + 1}/${widget.images.length}',
           style: const TextStyle(color: Colors.white),
         ),
       ),
@@ -49,15 +53,13 @@ class _ImageGalleryViewState extends State<ImageGalleryView> {
         scrollPhysics: const BouncingScrollPhysics(),
         builder: (BuildContext context, int index) {
           return PhotoViewGalleryPageOptions(
-            imageProvider: NetworkImage(
-              widget.messages[index].imageUrl ?? widget.messages[index].image ?? '',
-            ),
+            imageProvider: NetworkImage(widget.images[index]),
             initialScale: PhotoViewComputedScale.contained,
             minScale: PhotoViewComputedScale.contained * 0.8,
             maxScale: PhotoViewComputedScale.covered * 2,
           );
         },
-        itemCount: widget.messages.length,
+        itemCount: widget.images.length,
         loadingBuilder: (context, event) => Center(
           child: CircularProgressIndicator(
             value: event?.expectedTotalBytes != null
