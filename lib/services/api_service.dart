@@ -25,7 +25,7 @@ static String get baseUrl {
         
         return isEmulator 
             ? 'http://10.0.2.2:8000/api/v1'      // Android emulator
-            : 'http://192.168.1.4:8000/api/v1'; // Real device
+            : 'http://192.168.1.14:8000/api/v1'; // Real device
       } else if (Platform.isIOS) {
         return 'http://localhost:8000/api/v1';    // iOS simulator
       }
@@ -39,24 +39,71 @@ static String get baseUrl {
   }
 
   // Lưu token cho các request yêu cầu xác thực
-  Future<String?> getToken() async {
+  Future<String?> getAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('auth_token');
+    return prefs.getString('access_token');
   }
 
-  Future<void> saveToken(String token) async {
+  Future<String?> getRefreshToken() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', token);
+    return prefs.getString('refresh_token');
   }
 
-  Future<void> clearToken() async {
+  Future<void> saveTokens(Map<String, dynamic> tokenData) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
+    await prefs.setString('access_token', tokenData['access_token']);
+    await prefs.setString('refresh_token', tokenData['refresh_token']);
+    await prefs.setInt('token_expiry', DateTime.now().add(Duration(seconds: tokenData['expires_in'])).millisecondsSinceEpoch);
+  }
+
+  Future<void> clearTokens() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('access_token');
+    await prefs.remove('refresh_token');
+    await prefs.remove('token_expiry');
+  }
+
+  Future<bool> isTokenExpired() async {
+    final prefs = await SharedPreferences.getInstance();
+    final expiry = prefs.getInt('token_expiry');
+    if (expiry == null) return true;
+    return DateTime.now().millisecondsSinceEpoch > expiry;
+  }
+
+  Future<bool> refreshAccessToken() async {
+    try {
+      final refreshToken = await getRefreshToken();
+      if (refreshToken == null) return false;
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/refresh'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'refresh_token': refreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'success') {
+          await saveTokens(data['data']['token']);
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      print('Error refreshing token: $e');
+      return false;
+    }
   }
 
   // Headers cho các request yêu cầu xác thực
   Future<Map<String, String>> getAuthHeaders() async {
-    final token = await getToken();
+    if (await isTokenExpired()) {
+      final refreshSuccess = await refreshAccessToken();
+      if (!refreshSuccess) {
+        throw Exception('Token expired and refresh failed');
+      }
+    }
+    final token = await getAccessToken();
     return {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
@@ -120,8 +167,8 @@ static String get baseUrl {
         final data = jsonDecode(response.body);
         if (data['status'] == 'success') {
           // Hiển thị token nhận được
-          print('Token nhận được: ${data['data']['token']['access_token']}');
-          await saveToken(data['data']['token']['access_token']);
+          print('Tokens nhận được: ${data['data']['token']}');
+          await saveTokens(data['data']['token']);
         }
         return data;
       } else {

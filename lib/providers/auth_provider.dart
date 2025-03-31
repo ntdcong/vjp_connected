@@ -18,12 +18,30 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await _apiService.getToken();
+      final token = await _apiService.getAccessToken();
       if (token != null) {
-        _user = await _apiService.getUserProfile();
-        _isLoading = false;
-        notifyListeners();
-        return true;
+        try {
+          if (await _apiService.isTokenExpired()) {
+            final refreshSuccess = await _apiService.refreshAccessToken();
+            if (!refreshSuccess) {
+              await _apiService.clearTokens();
+              _user = null;
+              _error = 'Phiên đăng nhập đã hết hạn';
+              _isLoading = false;
+              notifyListeners();
+              return false;
+            }
+          }
+          _user = await _apiService.getUserProfile();
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        } catch (e) {
+          // Token không hợp lệ hoặc hết hạn
+          await _apiService.clearTokens();
+          _user = null;
+          _error = 'Phiên đăng nhập đã hết hạn';
+        }
       }
     } catch (e) {
       _error = e.toString();
@@ -64,7 +82,10 @@ class AuthProvider extends ChangeNotifier {
       
       if (response['status'] == 'success') {
         try {
-          // Phản hồi thành công, trích xuất thông tin user
+          // Phản hồi thành công, lưu token và trích xuất thông tin user
+          final token = response['data']['token'];
+          await _apiService.saveTokens(token);
+          
           final userData = response['data']['user'];
           print('User data: $userData');
           
@@ -128,7 +149,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await _apiService.clearToken();
+    await _apiService.clearTokens();
     _user = null;
     notifyListeners();
   }
@@ -137,4 +158,4 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
   }
-} 
+}
